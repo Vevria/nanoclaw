@@ -25,24 +25,33 @@ curl -s -H "x-internal-key: $VEVRIA_INTERNAL_KEY" "$VEVRIA_API_URL/api/companies
 curl -s -H "x-internal-key: $VEVRIA_INTERNAL_KEY" "$VEVRIA_API_URL/api/companies/$VEVRIA_COMPANY_ID/agents/$AGENT_ID"
 ```
 
-### Spawn a task agent
+### Create an agent
 ```bash
 curl -s -X POST -H "Content-Type: application/json" -H "x-internal-key: $VEVRIA_INTERNAL_KEY" \
   "$VEVRIA_API_URL/api/companies/$VEVRIA_COMPANY_ID/agents" \
   -d '{
     "name": "agent-name",
-    "role": "task",
-    "prompt": "Your task instructions here. Be specific about what the agent should do and what output you expect.",
-    "task_id": "optional-kanban-task-id",
-    "timeout_minutes": 30
+    "agent_type": "task",
+    "model": "claude-sonnet-4-20250514",
+    "max_tokens": 8192,
+    "system_prompt": "Your task instructions here.",
+    "skills": ["code-editing", "web-search"],
+    "capabilities": {"github_repos": true, "chat": true},
+    "template_id": "optional-template-uuid"
   }'
 ```
 
-### Send a message to an agent
+### Update an agent
 ```bash
-curl -s -X POST -H "Content-Type: application/json" -H "x-internal-key: $VEVRIA_INTERNAL_KEY" \
-  "$VEVRIA_API_URL/api/companies/$VEVRIA_COMPANY_ID/agents/$AGENT_ID/message" \
-  -d '{"content": "Additional instructions or context"}'
+curl -s -X PUT -H "Content-Type: application/json" -H "x-internal-key: $VEVRIA_INTERNAL_KEY" \
+  "$VEVRIA_API_URL/api/companies/$VEVRIA_COMPANY_ID/agents/$AGENT_ID" \
+  -d '{"name": "new-name", "model": "claude-sonnet-4-20250514"}'
+```
+
+### Start an agent
+```bash
+curl -s -X POST -H "x-internal-key: $VEVRIA_INTERNAL_KEY" \
+  "$VEVRIA_API_URL/api/companies/$VEVRIA_COMPANY_ID/agents/$AGENT_ID/start"
 ```
 
 ### Stop an agent
@@ -51,19 +60,19 @@ curl -s -X POST -H "x-internal-key: $VEVRIA_INTERNAL_KEY" \
   "$VEVRIA_API_URL/api/companies/$VEVRIA_COMPANY_ID/agents/$AGENT_ID/stop"
 ```
 
-### Get agent output/result
+### Delete an agent
 ```bash
-curl -s -H "x-internal-key: $VEVRIA_INTERNAL_KEY" "$VEVRIA_API_URL/api/companies/$VEVRIA_COMPANY_ID/agents/$AGENT_ID/result"
+curl -s -X DELETE -H "x-internal-key: $VEVRIA_INTERNAL_KEY" \
+  "$VEVRIA_API_URL/api/companies/$VEVRIA_COMPANY_ID/agents/$AGENT_ID"
 ```
 
-## Agent roles
+## Agent types
 - `task` — Short-lived agent for a specific task. Stops when done or on timeout.
-- `service` — Long-running agent that handles ongoing work (e.g., monitoring, support).
+- `always_on` — Long-running agent that handles ongoing work (e.g., CEO, monitoring).
 
 ## Guidelines
-- Write clear, specific prompts — the task agent only knows what you tell it
-- Set reasonable timeouts — most tasks should complete in 10-30 minutes
-- Link agents to kanban tasks via `task_id` so progress is tracked
-- Check agent results before marking kanban tasks as done
+- Write clear, specific system prompts — the task agent only knows what you tell it
+- Use `agent_type: "task"` for short-lived work, `always_on` for persistent agents
+- Check agent status before starting — an already-running agent will error
 - Stop agents that are stuck or no longer needed
 - Prefer spawning task agents over doing everything yourself — delegate parallelizable work

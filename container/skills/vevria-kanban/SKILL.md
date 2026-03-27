@@ -17,38 +17,43 @@ Include header: `x-internal-key: $VEVRIA_INTERNAL_KEY`
 
 ### List all tasks
 ```bash
-curl -s -H "x-internal-key: $VEVRIA_INTERNAL_KEY" "$VEVRIA_API_URL/api/companies/$VEVRIA_COMPANY_ID/tasks"
+curl -s -H "x-internal-key: $VEVRIA_INTERNAL_KEY" "$VEVRIA_API_URL/api/companies/$VEVRIA_COMPANY_ID/kanban"
 ```
 
 ### Create a task
 ```bash
 curl -s -X POST -H "Content-Type: application/json" -H "x-internal-key: $VEVRIA_INTERNAL_KEY" \
-  "$VEVRIA_API_URL/api/companies/$VEVRIA_COMPANY_ID/tasks" \
+  "$VEVRIA_API_URL/api/companies/$VEVRIA_COMPANY_ID/kanban" \
   -d '{"title": "Task title", "description": "Details", "column": "todo", "priority": "medium", "assigned_to": "agent-name"}'
+```
+
+### Get a specific task
+```bash
+curl -s -H "x-internal-key: $VEVRIA_INTERNAL_KEY" "$VEVRIA_API_URL/api/companies/$VEVRIA_COMPANY_ID/kanban/$TASK_ID"
 ```
 
 ### Update a task (move columns, change status)
 ```bash
 curl -s -X PUT -H "Content-Type: application/json" -H "x-internal-key: $VEVRIA_INTERNAL_KEY" \
-  "$VEVRIA_API_URL/api/companies/$VEVRIA_COMPANY_ID/tasks/$TASK_ID" \
+  "$VEVRIA_API_URL/api/companies/$VEVRIA_COMPANY_ID/kanban/$TASK_ID" \
   -d '{"column": "in_progress"}'
 ```
 
 ### Delete a task
 ```bash
 curl -s -X DELETE -H "x-internal-key: $VEVRIA_INTERNAL_KEY" \
-  "$VEVRIA_API_URL/api/companies/$VEVRIA_COMPANY_ID/tasks/$TASK_ID"
+  "$VEVRIA_API_URL/api/companies/$VEVRIA_COMPANY_ID/kanban/$TASK_ID"
 ```
 
 ## Column values
 `backlog`, `todo`, `in_progress`, `review`, `done`
 
 ## Priority values
-`low`, `medium`, `high`, `critical`
+`low`, `medium`, `high`, `urgent`
 
 ## Guidelines
 - Break large work items into small, specific tasks
 - Move tasks through columns as you make progress
-- Set appropriate priority — use `critical` sparingly
+- Set appropriate priority — use `urgent` sparingly
 - Assign tasks to yourself or other agents by name
 - Add clear descriptions so other agents (or the owner) understand the work

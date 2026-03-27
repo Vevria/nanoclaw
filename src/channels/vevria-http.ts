@@ -13,6 +13,7 @@ const VEVRIA_HTTP_PORT = parseInt(process.env.VEVRIA_HTTP_PORT || '3100', 10);
 const VEVRIA_CALLBACK_URL = process.env.VEVRIA_CALLBACK_URL || '';
 const VEVRIA_AGENT_ID = process.env.VEVRIA_AGENT_ID || '';
 const VEVRIA_COMPANY_ID = process.env.VEVRIA_COMPANY_ID || '';
+const VEVRIA_INTERNAL_KEY = process.env.VEVRIA_INTERNAL_KEY || '';
 
 function readBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -46,12 +47,24 @@ class VevriaHttpChannel implements Channel {
 
   async connect(): Promise<void> {
     this.server = http.createServer(async (req, res) => {
-      const url = new URL(req.url || '/', `http://localhost:${VEVRIA_HTTP_PORT}`);
+      const url = new URL(
+        req.url || '/',
+        `http://localhost:${VEVRIA_HTTP_PORT}`,
+      );
       const pathname = url.pathname;
 
       try {
         // POST /message — receive a message from the Vevria backend
         if (req.method === 'POST' && pathname === '/message') {
+          // Verify internal API key
+          if (VEVRIA_INTERNAL_KEY) {
+            const providedKey = req.headers['x-internal-key'];
+            if (providedKey !== VEVRIA_INTERNAL_KEY) {
+              jsonResponse(res, 401, { error: 'Unauthorized: invalid or missing x-internal-key' });
+              return;
+            }
+          }
+
           const raw = await readBody(req);
           let body: Record<string, unknown>;
           try {
@@ -157,7 +170,10 @@ class VevriaHttpChannel implements Channel {
     try {
       const resp = await fetch(VEVRIA_CALLBACK_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(VEVRIA_INTERNAL_KEY ? { 'x-internal-key': VEVRIA_INTERNAL_KEY } : {}),
+        },
         body: JSON.stringify({
           agent_id: VEVRIA_AGENT_ID,
           company_id: VEVRIA_COMPANY_ID,
