@@ -10,3 +10,6 @@
 // telegram
 
 // whatsapp
+
+// vevria
+import './vevria-http.js';
