@@ -60,7 +60,9 @@ class VevriaHttpChannel implements Channel {
           if (VEVRIA_INTERNAL_KEY) {
             const providedKey = req.headers['x-internal-key'];
             if (providedKey !== VEVRIA_INTERNAL_KEY) {
-              jsonResponse(res, 401, { error: 'Unauthorized: invalid or missing x-internal-key' });
+              jsonResponse(res, 401, {
+                error: 'Unauthorized: invalid or missing x-internal-key',
+              });
               return;
             }
           }
@@ -172,13 +174,20 @@ class VevriaHttpChannel implements Channel {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(VEVRIA_INTERNAL_KEY ? { 'x-internal-key': VEVRIA_INTERNAL_KEY } : {}),
+          ...(VEVRIA_INTERNAL_KEY
+            ? { 'x-internal-key': VEVRIA_INTERNAL_KEY }
+            : {}),
         },
         body: JSON.stringify({
           agent_id: VEVRIA_AGENT_ID,
           company_id: VEVRIA_COMPANY_ID,
           chat_jid: jid,
           content: text,
+          // Token usage — reported as 0 for now. Proper tracking requires
+          // integration with Claude Code's usage reporting (OneCLI gateway).
+          input_tokens: 0,
+          output_tokens: 0,
+          cost_usd: 0,
         }),
       });
 
