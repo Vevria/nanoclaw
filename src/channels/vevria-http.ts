@@ -183,6 +183,7 @@ class VevriaHttpChannel implements Channel {
           company_id: VEVRIA_COMPANY_ID,
           chat_jid: jid,
           content: text,
+          code_pushed: false,
           // Token usage — reported as 0 for now. Proper tracking requires
           // integration with Claude Code's usage reporting (OneCLI gateway).
           input_tokens: 0,
