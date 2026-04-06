@@ -40,6 +40,30 @@ callback() {
         > /dev/null 2>&1 || true
 }
 
+trigger_redeploy() {
+    echo "Triggering redeploy for company ${VEVRIA_COMPANY_ID}..."
+    local response
+    response=$(curl -s -w "\n%{http_code}" -X POST \
+        "${VEVRIA_API_URL}/api/companies/${VEVRIA_COMPANY_ID}/infra/redeploy" \
+        -H "x-internal-key: ${VEVRIA_INTERNAL_KEY}" \
+        -H "Content-Type: application/json" \
+        -d '{}')
+    local http_code
+    http_code=$(echo "$response" | tail -1)
+    if [ "$http_code" = "200" ] || [ "$http_code" = "201" ]; then
+        echo "Redeploy triggered successfully"
+    else
+        echo "Redeploy failed (HTTP $http_code) — will retry on next push"
+    fi
+}
+
+check_deploy_status() {
+    local response
+    response=$(curl -s "${VEVRIA_API_URL}/api/companies/${VEVRIA_COMPANY_ID}/infra/deploy-status" \
+        -H "x-internal-key: ${VEVRIA_INTERNAL_KEY}")
+    echo "$response" | python3 -c "import sys,json; d=json.load(sys.stdin).get('data',{}); print(d.get('status','unknown') if d else 'none')" 2>/dev/null || echo "unknown"
+}
+
 # Run Claude Code with a prompt, capture output and token usage
 run_claude() {
     local prompt="$1"
@@ -162,6 +186,24 @@ while true; do
             rm -f "$task_file"
             echo "[vevria-agent] Working on: $title"
             run_claude "You have a task assigned to you: '$title'. Description: $desc. Work on it and report your progress." > /dev/null
+
+            # After processing a coding task, trigger deploy
+            task_type=$(echo "$task" | python3 -c "import sys,json; print(json.load(sys.stdin).get('task_type',''))" 2>/dev/null)
+            if [ "$task_type" = "feature" ] || [ "$task_type" = "bugfix" ]; then
+                trigger_redeploy
+                # Wait up to 3 minutes for deploy, check every 30s
+                for i in $(seq 1 6); do
+                    sleep 30
+                    status=$(check_deploy_status)
+                    if [ "$status" = "running" ]; then
+                        callback "Deploy complete — app is live" 0 0 0
+                        break
+                    elif [ "$status" = "failed" ]; then
+                        callback "Deploy failed. I'll check the logs and try to fix." 0 0 0
+                        break
+                    fi
+                done
+            fi
         done <<< "$TASKS"
     fi
 
