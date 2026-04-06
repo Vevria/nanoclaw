@@ -132,7 +132,7 @@ try:
     aid = os.environ.get('VEVRIA_AGENT_NAME', 'ceo')
     for t in tasks:
         if t.get('column') in ('todo', 'in_progress') and (t.get('assigned_to', '') == aid or t.get('assigned_to', '') == 'ceo-agent'):
-            print(json.dumps({'id': t['id'], 'title': t['title'], 'description': t.get('description', ''), 'column': t['column']}))
+            print(json.dumps({'id': t['id'], 'title': t['title'], 'description': t.get('description', ''), 'column': t['column'], 'task_type': t.get('task_type', '')}))
 except:
     pass
 " 2>/dev/null
@@ -167,7 +167,10 @@ while true; do
             printf '%s' "$msg" > "$msg_file"
             content=$(python3 -c "import sys,json; m=json.load(open(sys.argv[1])); print(f'{m[\"sender\"]} says: {m[\"content\"]}')" "$msg_file")
             rm -f "$msg_file"
-            run_claude "You received a message: $content. Respond appropriately based on your role." > /dev/null
+            prompt_file=$(mktemp)
+            printf 'You received a message: %s. Respond appropriately based on your role.' "$content" > "$prompt_file"
+            run_claude "$(cat "$prompt_file")" > /dev/null
+            rm -f "$prompt_file"
         done <<< "$MESSAGES"
         # Update last seen timestamp after processing
         date -u +%Y-%m-%dT%H:%M:%SZ > "$LAST_SEEN_FILE"
