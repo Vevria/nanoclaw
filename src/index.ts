@@ -524,6 +524,29 @@ async function main(): Promise<void> {
   logger.info('Database initialized');
   loadState();
 
+  // Auto-register a default group for Vevria company agents.
+  // When deployed by the Vevria platform, VEVRIA_COMPANY_ID is set.
+  // Without a registered group, messages arrive but are silently dropped
+  // by the message loop (it gates on registeredGroups[chatJid]).
+  const vevriaCompanyId = process.env.VEVRIA_COMPANY_ID;
+  const vevriaAgentId = process.env.VEVRIA_AGENT_ID;
+  if (vevriaCompanyId) {
+    const jid = `vevria:${vevriaCompanyId}`;
+    if (!registeredGroups[jid]) {
+      const agentName = process.env.VEVRIA_AGENT_NAME || 'vevria-agent';
+      const folder = `vevria_${agentName.replace(/[^a-zA-Z0-9-]/g, '_').toLowerCase()}`;
+      logger.info({ jid, folder }, 'Auto-registering Vevria company group');
+      registerGroup(jid, {
+        name: agentName,
+        folder,
+        trigger: `@${agentName}`,
+        added_at: new Date().toISOString(),
+        requiresTrigger: false, // Always respond, no trigger needed
+        isMain: false,
+      });
+    }
+  }
+
   // Ensure OneCLI agents exist for all registered groups.
   // Recovers from missed creates (e.g. OneCLI was down at registration time).
   for (const [jid, group] of Object.entries(registeredGroups)) {
