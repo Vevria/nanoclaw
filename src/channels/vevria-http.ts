@@ -9,7 +9,10 @@ import type { ChannelOpts } from './registry.js';
 import http from 'node:http';
 import { randomUUID } from 'node:crypto';
 
-const VEVRIA_HTTP_PORT = parseInt(process.env.VEVRIA_HTTP_PORT || '3100', 10);
+const VEVRIA_HTTP_PORT = parseInt(
+  process.env.PORT || process.env.VEVRIA_HTTP_PORT || '3100',
+  10,
+);
 const VEVRIA_CALLBACK_URL = process.env.VEVRIA_CALLBACK_URL || '';
 const VEVRIA_AGENT_ID = process.env.VEVRIA_AGENT_ID || '';
 const VEVRIA_COMPANY_ID = process.env.VEVRIA_COMPANY_ID || '';

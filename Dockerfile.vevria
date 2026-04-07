@@ -1,0 +1,32 @@
+# Nanoclaw Vevria Server — persistent agent runtime with HTTP channel
+FROM node:22-slim
+
+RUN apt-get update && apt-get install -y \
+    curl git python3 docker.io \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Claude Code CLI
+RUN npm install -g @anthropic-ai/claude-code
+
+WORKDIR /app
+
+# Copy nanoclaw source
+COPY package.json package-lock.json tsconfig.json ./
+COPY src/ src/
+COPY container/ container/
+
+# Install dependencies and build
+RUN npm ci && npm run build
+
+# Create data directories
+RUN mkdir -p /app/data /app/groups
+
+ENV NODE_ENV=production
+ENV DATA_DIR=/app/data
+ENV GROUPS_DIR=/app/groups
+
+# The nanoclaw server listens on PORT (set by Railway)
+EXPOSE 3100
+
+# Run nanoclaw in server mode — it starts the HTTP channel and waits for messages
+CMD ["node", "dist/index.js"]
