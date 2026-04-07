@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - 'container/**'
-      - 'Dockerfile.agent'
       - 'Dockerfile.vevria'
       - 'src/**'
       - 'package.json'
@@ -31,22 +30,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push agent image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: Dockerfile.agent
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-
-      - name: Build and push Vevria server image
+      - name: Build and push Vevria nanoclaw image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile.vevria
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:vevria-latest
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:vevria-${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
