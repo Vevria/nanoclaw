@@ -555,9 +555,76 @@ async function main(): Promise<void> {
 
   restoreRemoteControl();
 
+  // Restore agent session from platform DB (survives Railway redeployments)
+  if (vevriaCompanyId && vevriaAgentId) {
+    try {
+      const apiUrl = process.env.VEVRIA_API_URL || '';
+      const key = process.env.VEVRIA_INTERNAL_KEY || '';
+      if (apiUrl && key) {
+        const resp = await fetch(
+          `${apiUrl}/api/companies/${vevriaCompanyId}/files/_agent_session_${vevriaAgentId}`,
+          { headers: { 'x-internal-key': key } },
+        );
+        if (resp.ok) {
+          const data = (await resp.json()) as { data?: { content?: string } };
+          if (data.data?.content) {
+            const sessionData = JSON.parse(data.data.content) as {
+              db?: string;
+              sessions?: Record<string, string>;
+            };
+            // Restore session IDs so nanoclaw can resume conversations
+            if (sessionData.sessions) {
+              for (const [folder, sessionId] of Object.entries(
+                sessionData.sessions,
+              )) {
+                sessions[folder] = sessionId;
+                setSession(folder, sessionId);
+              }
+              logger.info(
+                { count: Object.keys(sessionData.sessions).length },
+                'Restored agent sessions from platform DB',
+              );
+            }
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn({ err }, 'Failed to restore agent sessions — starting fresh');
+    }
+  }
+
   // Graceful shutdown handlers
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutdown signal received');
+
+    // Backup session state to platform DB before exiting
+    if (vevriaCompanyId && vevriaAgentId) {
+      try {
+        const apiUrl = process.env.VEVRIA_API_URL || '';
+        const key = process.env.VEVRIA_INTERNAL_KEY || '';
+        if (apiUrl && key) {
+          const sessionData = JSON.stringify({
+            sessions: { ...sessions },
+            backed_up_at: new Date().toISOString(),
+          });
+          await fetch(
+            `${apiUrl}/api/companies/${vevriaCompanyId}/files/_agent_session_${vevriaAgentId}`,
+            {
+              method: 'PUT',
+              headers: {
+                'x-internal-key': key,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ content: sessionData }),
+            },
+          );
+          logger.info('Agent sessions backed up to platform DB');
+        }
+      } catch (err) {
+        logger.warn({ err }, 'Failed to backup agent sessions');
+      }
+    }
+
     await queue.shutdown(10000);
     for (const ch of channels) await ch.disconnect();
     process.exit(0);
