@@ -17,6 +17,7 @@ const VEVRIA_CALLBACK_URL = process.env.VEVRIA_CALLBACK_URL || '';
 const VEVRIA_AGENT_ID = process.env.VEVRIA_AGENT_ID || '';
 const VEVRIA_COMPANY_ID = process.env.VEVRIA_COMPANY_ID || '';
 const VEVRIA_INTERNAL_KEY = process.env.VEVRIA_INTERNAL_KEY || '';
+const VEVRIA_API_URL = process.env.VEVRIA_API_URL || '';
 
 function readBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -106,6 +107,33 @@ class VevriaHttpChannel implements Channel {
             is_from_me: false,
             is_bot_message: false,
           };
+
+          // Check budget before processing
+          if (VEVRIA_API_URL && VEVRIA_INTERNAL_KEY) {
+            try {
+              const spendResp = await fetch(
+                `${VEVRIA_API_URL}/api/companies/${VEVRIA_COMPANY_ID}/spend`,
+                { headers: { 'x-internal-key': VEVRIA_INTERNAL_KEY } },
+              );
+              if (spendResp.ok) {
+                const spend = await spendResp.json();
+                if (spend.data?.over_budget) {
+                  res.writeHead(429, {
+                    'Content-Type': 'application/json',
+                  });
+                  res.end(
+                    JSON.stringify({
+                      error: 'Daily budget exceeded',
+                      over_budget: true,
+                    }),
+                  );
+                  return;
+                }
+              }
+            } catch {
+              // Budget check failed — allow message through (fail open)
+            }
+          }
 
           // Notify the channel registry of this chat
           this.onChatMetadata(
